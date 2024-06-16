@@ -1,0 +1,58 @@
+Sub UpdateSegmentColumns()
+    Dim wsSeg As Worksheet
+    Dim wsBeh As Worksheet
+    Dim segNames As Collection
+    Dim cell As Range
+    Dim yearCol As Integer
+    Dim balY1Col As Integer
+    Dim insertCol As Integer
+    Dim i As Integer
+    Dim col As Integer
+    
+    ' Set the worksheets
+    Set wsSeg = ThisWorkbook.Sheets("seg_inputs")
+    Set wsBeh = ThisWorkbook.Sheets("beh_inputs")
+    
+    ' Initialize the collection to store segment names
+    Set segNames = New Collection
+    
+    ' Get the segment names from seg_inputs sheet
+    For Each cell In wsSeg.Range("B2:B" & wsSeg.Cells(wsSeg.Rows.Count, "B").End(xlUp).Row)
+        If cell.Value <> "" Then
+            segNames.Add wsSeg.Cells(cell.Row, 2).Value
+        End If
+    Next cell
+    
+    ' Find the columns for 'year' and 'bal_y1' in beh_inputs sheet
+    yearCol = Application.WorksheetFunction.Match("year", wsBeh.Rows(1), 0)
+    balY1Col = Application.WorksheetFunction.Match("bal_y1", wsBeh.Rows(1), 0)
+    
+    ' Determine the range of existing segment columns
+    insertCol = yearCol + 1
+    
+    ' Remove previously added segment columns
+    ' Identify existing segment columns between year and bal_y1
+    For col = insertCol To balY1Col - 1
+        wsBeh.Columns(insertCol).Delete
+    Next col
+    
+    ' Insert the segment columns
+    For i = 1 To segNames.Count
+        wsBeh.Columns(insertCol).Insert Shift:=xlToRight, CopyOrigin:=xlFormatFromLeftOrAbove
+        wsBeh.Cells(1, insertCol).Value = segNames(i)
+        insertCol = insertCol + 1
+    Next i
+End Sub
+
+
+
+
+
+
+Private Sub Worksheet_Change(ByVal Target As Range)
+    ' Check if the change was made within the segment input range
+    If Not Intersect(Target, Me.Range("B2:B" & Me.Cells(Me.Rows.Count, "B").End(xlUp).Row)) Is Nothing Then
+        Call UpdateSegmentColumns
+    End If
+End Sub
+
