@@ -1,0 +1,73 @@
+Sub UpdatePivotTableFilters()
+    Dim wsOutput As Worksheet
+    Dim wsPivot As Worksheet
+    Dim pt As PivotTable
+    Dim pc As PivotCache
+    Dim pf As PivotField
+    Dim lastRow As Long
+    Dim lastCol As Long
+    Dim segments As Collection
+    Dim cell As Range
+    Dim segName As String
+    Dim behIdCol As Long
+    Dim revolveBalanceCol As Long
+    Dim col As Long
+    Dim vItem As Variant
+    
+    ' Set the worksheets
+    Set wsOutput = ThisWorkbook.Sheets("python_output")
+    Set wsPivot = ThisWorkbook.Sheets("pivot_table") ' Adjust the sheet name if necessary
+    
+    ' Set the PivotTable
+    Set pt = wsPivot.PivotTables(1) ' Adjust if there are multiple pivot tables
+    
+    ' Find the columns for Beh_id and Revolve Balance
+    behIdCol = Application.WorksheetFunction.Match("Year", wsOutput.Rows(1), 0)
+    revolveBalanceCol = Application.WorksheetFunction.Match("Revolve Balance", wsOutput.Rows(1), 0)
+    
+    ' Initialize the collection to store segment names
+    Set segments = New Collection
+    
+    ' Get the segment names from python_output sheet (between Beh_id and Revolve Balance)
+    For col = behIdCol + 1 To revolveBalanceCol - 1
+        segName = wsOutput.Cells(1, col).Value
+        If segName <> "" Then
+            segments.Add segName
+        End If
+    Next col
+    
+    ' Remove existing filters
+    For Each pf In pt.PivotFields
+        If pf.Orientation = xlPageField Then
+            pf.ClearAllFilters
+            pf.Orientation = xlHidden
+        End If
+    Next pf
+    
+    ' Add filters for the segments
+    For Each vItem In segments
+        On Error Resume Next
+        Set pf = pt.PivotFields(vItem)
+        If Err.Number = 0 Then
+            pf.Orientation = xlPageField
+        End If
+        On Error GoTo 0
+    Next vItem
+    ' Refresh the pivot table
+    pt.RefreshTable
+End Sub
+
+
+
+
+
+----------------------
+
+
+
+Private Sub Worksheet_Change(ByVal Target As Range)
+    If Not Intersect(Target, Me.Range("A:Z")) Is Nothing Then
+        Call UpdatePivotTableFilters
+    End If
+End Sub
+
