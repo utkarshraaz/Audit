@@ -1,0 +1,101 @@
+Sub ManageSlicers()
+    Dim wsOutput As Worksheet
+    Dim wsOverview As Worksheet
+    Dim pt As PivotTable
+    Dim pf As PivotField
+    Dim lastCol As Long
+    Dim segments As Collection
+    Dim cell As Range
+    Dim segName As String
+    Dim yearCol As Long
+    Dim balanceCol As Long
+    Dim col As Long
+    Dim vItem As Variant
+    Dim slicerCache As slicerCache
+    Dim slicer As slicer
+    Dim slicerName As String
+    Dim topPosition As Double
+    Dim leftPosition As Double
+    
+    ' Set the worksheets
+    Set wsOutput = ThisWorkbook.Sheets("python_output")
+    Set wsOverview = ThisWorkbook.Sheets("overview")
+    
+    ' Refresh all pivot tables in the workbook
+    For Each ws In ThisWorkbook.Worksheets
+        For Each pt In ws.PivotTables
+            pt.RefreshTable
+        Next pt
+    Next ws
+    
+    ' Initialize the collection to store segment names
+    Set segments = New Collection
+    
+    ' Find the columns for Year and Balance
+    yearCol = Application.WorksheetFunction.Match("Year", wsOutput.Rows(1), 0)
+    balanceCol = Application.WorksheetFunction.Match("Balance", wsOutput.Rows(1), 0)
+    
+    ' Get the segment names from python_output sheet (between Year and Balance)
+    For col = yearCol + 1 To balanceCol - 1
+        segName = wsOutput.Cells(1, col).Value
+        If segName <> "" Then
+            segments.Add segName
+        End If
+    Next col
+    
+    ' Remove all existing slicers
+    For Each slicerCache In ThisWorkbook.SlicerCaches
+        slicerCache.Delete
+    Next slicerCache
+    
+    ' Debug: Output segment names
+    Debug.Print "Segment Names:"
+    For Each vItem In segments
+        Debug.Print vItem
+    Next vItem
+    
+    ' Add and connect slicers for the segments
+    For Each vItem In segments
+        slicerName = "Slicer_" & vItem
+        
+        ' Debug: Adding slicer
+        Debug.Print "Adding slicer for: " & vItem
+        
+        ' Add the slicer
+        Set slicerCache = Nothing ' Ensure slicerCache is reset
+        For Each pt In wsOverview.PivotTables
+            On Error Resume Next
+            Set slicerCache = ThisWorkbook.SlicerCaches.Add2(pt, vItem, slicerName)
+            On Error GoTo 0
+            
+            If Not slicerCache Is Nothing Then
+                Debug.Print "SlicerCache created for: " & vItem
+                Exit For
+            Else
+                Debug.Print "Failed to create SlicerCache for: " & vItem
+            End If
+        Next pt
+        
+        ' Connect the slicer to all pivot tables in the sheet
+        If Not slicerCache Is Nothing Then
+            For Each pt In wsOverview.PivotTables
+                slicerCache.PivotTables.AddPivotTable pt
+            Next pt
+        Else
+            Debug.Print "SlicerCache is Nothing for: " & vItem
+        End If
+    Next vItem
+    
+    ' Position the slicers horizontally at the top of the sheet
+    topPosition = 20
+    leftPosition = 10
+    For Each slicerCache In ThisWorkbook.SlicerCaches
+        For Each slicer In slicerCache.Slicers
+            slicer.Visible = True
+            slicer.Top = topPosition
+            slicer.Left = leftPosition
+            leftPosition = leftPosition + slicer.Width + 10
+        Next slicer
+    Next slicerCache
+End Sub
+
